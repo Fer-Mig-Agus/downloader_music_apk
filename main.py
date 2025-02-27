@@ -29,45 +29,90 @@ class Main_window:
     def destroy_element(self,element:tk):
         element.destroy()
 
+        # def show_popup_notification(self, message: str, type_: str):
+        #     frame = tk.Frame(self.window, bg='lightgray')
+        #     frame.configure(width=250, height=150)  # Ajustar tamaño del frame
+        #     label = tk.Label(frame, text=message, bg='lightgray')
+        #     label.pack(pady=10)  # Añadir algo de espacio para que no quede pegado al borde
+        #     button = tk.Button(frame, width=15, height=2, bg='blue', text='Aceptar',
+        #                        command=lambda: self.destroy_element(frame))  # Botón más pequeño
+        #     button.pack(pady=10)  # Añadir espacio al botón
+        #
+        #     frame.pack_propagate(False)
+        #     frame.pack()
+
     def show_popup_notification(self, message:str,type_:str):
 
-        frame=tk.Frame(self.window, bg='lightgray')
-        frame.configure(width=200,height=100)
-        label=tk.Label(frame,text=message,bg='lightgray')
-        label.pack()
-        button=tk.Button(frame,width=50,height=20,bg='blue', text='Aceptar',command=lambda: self.destroy_element(frame))
-        button.pack()
+        popup = tk.Toplevel(self.window)
+        popup.config(bg='azure2')
+        if type_ == 'Error':
+            popup.title("¡Error!")
+            icon_path = self.get_path_icon('error.ico')
+        elif type_ == 'Accept':
+            popup.title("¡Éxito!")
+            icon_path = self.get_path_icon('accept.ico')
+        else:
+            popup.title("Notificación")
+            icon_path = self.get_path_icon('notification.ico')
 
-        frame.pack_propagate(False)
-        self.window.after(100, frame.pack)
+        popup.geometry('250x150')
+        popup.iconbitmap(icon_path)
+
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+
+        popup_width = 250
+        popup_height = 150
+
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 4) - (popup_height // 2)
+        popup.geometry(f'{popup_width}x{popup_height}+{x}+{y}')
+
+        label = tk.Label(popup, text=message, bg=popup['bg'])
+        label.pack(pady=10)
+
+        background='gray'
+        match type_:
+            case 'Error':
+                background='firebrick1'
+            case 'Accept':
+                background='chartreuse3'
+            case 'Notification':
+                background='SteelBlue1'
+
+
+        button = tk.Button(popup, width=15, height=2, bg=background, text='Aceptar', command=popup.destroy)
+        button.pack(pady=10)
+
+        popup.pack_propagate(False)
 
 
     def verify_input(self,input_):
         value=input_.get()
-        print(value)
+
         if value == "":
-            print('entro en el if')
             self.show_popup_notification('Debes de buscar algo','Error')
         elif not 'https://' in value:
             self.show_popup_notification('Debe ser una URL','Error')
+        elif not 'https://www.youtube.com/' in value:
+            self.show_popup_notification('Debe ser una url de Youtube', 'Error')
+        else:
+            self.show_popup_notification('Buscando, espera', 'Accept')
 
 
 
     def run(self):
-        # with_input=int(self.width_screen-(self.width_screen/2))
-        # print(with_input)
 
         label=tk.Label(self.window)
         label.configure(text='Ingrese la URL: ',bg='sky blue',fg='black')
         label.pack(pady=10)
 
         width_input = int(int(self.width_screen / 10)/2)
-        print(width_input)
         input_=tk.Entry(self.window)
         input_.configure(width=width_input)
         input_.pack()
         button=tk.Button(self.window,text='Buscar',command=lambda: self.verify_input(input_))
-        button.pack()
+        button.pack(pady=10)
 
         self.window.mainloop()
 
