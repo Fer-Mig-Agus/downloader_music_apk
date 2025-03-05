@@ -1,7 +1,7 @@
 import tkinter as tk
 import sys
 import os
-
+from downloader import MusicDownloader as MD
 
 class Main_window:
 
@@ -87,6 +87,8 @@ class Main_window:
         popup.pack_propagate(False)
 
 
+
+
     def verify_input(self,input_):
         value=input_.get()
 
@@ -97,7 +99,9 @@ class Main_window:
         elif not 'https://www.youtube.com/' in value:
             self.show_popup_notification('Debe ser una url de Youtube', 'Error')
         else:
-            self.show_popup_notification('Buscando, espera', 'Accept')
+            # self.show_popup_notification('Buscando, espera', 'Accept')
+            downloader = MD()
+            downloader.run(input_.get().strip(), self)
 
 
 
@@ -113,6 +117,8 @@ class Main_window:
         input_.pack()
         button=tk.Button(self.window,text='Buscar',command=lambda: self.verify_input(input_))
         button.pack(pady=10)
+
+
 
         self.window.mainloop()
 

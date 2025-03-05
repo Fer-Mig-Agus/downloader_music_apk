@@ -3,3 +3,6 @@
 notas.txt
 
 venv
+
+
+__pycache__/

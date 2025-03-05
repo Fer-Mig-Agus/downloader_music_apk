@@ -15,8 +15,9 @@ class MusicDownloader:
     def __init__(self):
         """Inicializa las variables de la clase."""
         self.ffmpeg_verificado = False
+        self.list_music=[]
 
-    def instalar_ffmpeg(self):
+    def instalar_ffmpeg(self,screen):
         """Verifica si FFmpeg está instalado y, si no, lo descarga e instala.
 
             Esta función realiza los siguientes pasos:
@@ -34,19 +35,19 @@ class MusicDownloader:
                 None
             """
         if self.ffmpeg_verificado or self.ffmpeg_esta_instalado():
-            print(f"✅ FFmpeg ya está instalado en '{FFMPEG_BIN_PATH}'.")
+            screen.show_popup_notification(f"✅ FFmpeg ya está instalado en '{FFMPEG_BIN_PATH}'.",'Notification')
             return
 
-        print(f"⚠️ FFmpeg no está instalado en '{FFMPEG_INSTALL_PATH}'. Descargando...")
-        os.makedirs(FFMPEG_INSTALL_PATH, exist_ok=True)
-
-        if self.descargar_ffmpeg():
-            self.extraer_ffmpeg()
-            os.environ["PATH"] += os.pathsep + FFMPEG_BIN_PATH
-            self.ffmpeg_verificado = True
-            print("✅ FFmpeg instalado correctamente.")
-        else:
-            print("❌ No se pudo instalar FFmpeg.")
+        screen.show_popup_notification(f"⚠️ FFmpeg no está instalado en '{FFMPEG_INSTALL_PATH}'. Descargando...",'Error')
+        # os.makedirs(FFMPEG_INSTALL_PATH, exist_ok=True)
+        #
+        # if self.descargar_ffmpeg():
+        #     self.extraer_ffmpeg()
+        #     os.environ["PATH"] += os.pathsep + FFMPEG_BIN_PATH
+        #     self.ffmpeg_verificado = True
+        #     print("✅ FFmpeg instalado correctamente.")
+        # else:
+        #     print("❌ No se pudo instalar FFmpeg.")
 
     def ffmpeg_esta_instalado(self):
         """Verifica si FFmpeg ya está instalado en el sistema.
@@ -316,7 +317,7 @@ class MusicDownloader:
 
         print("✅ Descarga de playlist finalizada.")
 
-    def descargar_musica(self, url):
+    def descargar_musica(self, url,screen):
         """Descarga un video o una playlist de YouTube en formato MP3.
 
             La función determina si la URL proporcionada corresponde a un solo video o a una playlist
@@ -337,32 +338,37 @@ class MusicDownloader:
             Retorna:
                 None
             """
+
         if not validators.url(url):
-            print("❌ Error: La URL proporcionada no es válida.")
+            screen.show_popup_notification('La URL proporcionada no es válida.','Error')
             return
 
-        self.instalar_ffmpeg()
-        carpeta = self.obtener_nombre_carpeta()
-        url_limpia = re.sub(r'&(?:start_radio=1|rv=[^&]*)', '', url)
+        screen.show_popup_notification('Link aceptado','Accept')
+        self.instalar_ffmpeg(screen)
+        return
+        # carpeta = self.obtener_nombre_carpeta()
+        # url_limpia = re.sub(r'&(?:start_radio=1|rv=[^&]*)', '', url)
+        #
+        # videos = self.obtener_info_playlist(url_limpia)
+        #
+        # if videos:
+        #     print(f"📜 Se detectó una playlist con {len(videos)} videos.")
+        #     self.descargar_playlist(url_limpia, carpeta)
+        # else:
+        #     print("🎵 Descargando un solo video.")
+        #     self.descargar_audio(url_limpia, carpeta)
 
-        videos = self.obtener_info_playlist(url_limpia)
 
-        if videos:
-            print(f"📜 Se detectó una playlist con {len(videos)} videos.")
-            self.descargar_playlist(url_limpia, carpeta)
-        else:
-            print("🎵 Descargando un solo video.")
-            self.descargar_audio(url_limpia, carpeta)
+    def run(self, url_input:str, screen):
+        parser = argparse.ArgumentParser(description="Descargar música de YouTube en formato MP3.")
+        parser.add_argument("url", nargs="?", help="URL del video o playlist de YouTube.")
+
+        args = parser.parse_args()
+
+        if not args.url:
+            args.url = url_input
+
+        # downloader = MusicDownloader()
+        self.descargar_musica(args.url,screen)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Descargar música de YouTube en formato MP3.")
-    parser.add_argument("url", nargs="?", help="URL del video o playlist de YouTube.")
-
-    args = parser.parse_args()
-
-    if not args.url:
-        args.url = input("Ingrese la URL del video o playlist de YouTube: ").strip()
-
-    downloader = MusicDownloader()
-    downloader.descargar_musica(args.url)
