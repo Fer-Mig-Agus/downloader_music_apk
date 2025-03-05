@@ -41,7 +41,7 @@ class Main_window:
         #     frame.pack_propagate(False)
         #     frame.pack()
 
-    def show_popup_notification(self, message:str,type_:str):
+    def show_popup_notification(self, message:str,type_:str,callback=None):
 
         popup = tk.Toplevel(self.window)
         popup.config(bg='azure2')
@@ -55,7 +55,7 @@ class Main_window:
             popup.title("Notificación")
             icon_path = self.get_path_icon('assets/notification.ico')
 
-        popup.geometry('250x150')
+        popup.geometry('300x180')
         popup.iconbitmap(icon_path)
 
         screen_width = popup.winfo_screenwidth()
@@ -68,8 +68,8 @@ class Main_window:
         y = (screen_height // 4) - (popup_height // 2)
         popup.geometry(f'{popup_width}x{popup_height}+{x}+{y}')
 
-        label = tk.Label(popup, text=message, bg=popup['bg'])
-        label.pack(pady=10)
+        label = tk.Label(popup, text=message, bg=popup['bg'], wraplength=popup_width-20, justify="center")
+        label.pack(pady=10,padx=10)
 
         background='gray'
         match type_:
@@ -80,14 +80,87 @@ class Main_window:
             case 'Notification':
                 background='SteelBlue1'
 
+        def on_close():
+            popup.destroy()
+            if callback:
+                callback()
 
-        button = tk.Button(popup, width=15, height=2, bg=background, text='Aceptar', command=popup.destroy)
+        button = tk.Button(popup, width=15, height=2, bg=background, text='Aceptar', command=on_close)
         button.pack(pady=10)
 
-        popup.pack_propagate(False)
+        # popup.pack_propagate(False)
+
+    def verify_input_name_directory(self,input_):
+        value=input_.get()
+
+        if value == "":
+            self.show_popup_notification('Debes de buscar algo','Error')
+
+        else:
+            self.show_popup_notification('Creando, espera...', 'Accept')
 
 
 
+    def input_name_directory(self):
+
+        popup = tk.Toplevel(self.window)
+        popup.config(bg='azure2')
+
+        icon_path = self.get_path_icon('assets/notification.ico')
+
+        popup.geometry('300x180')
+        popup.iconbitmap(icon_path)
+
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+
+        popup_width = 250
+        popup_height = 150
+
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 4) - (popup_height // 2)
+        popup.geometry(f'{popup_width}x{popup_height}+{x}+{y}')
+
+        label = tk.Label(popup, text='Ingrese el nombre de la carpeta', bg=popup['bg'], wraplength=popup_width - 20, justify="center")
+        label.pack(pady=10, padx=10)
+
+        width_input = int(int(popup_width / 10) / 2)
+        input_ = tk.Entry(popup)
+        input_.configure(width=width_input)
+        input_.pack()
+        button = tk.Button(self.window, text='Crear', command=lambda: self.verify_input_name_directory(input_))
+        button.pack(pady=10)
+
+
+    def choose_election(self,message):
+        popup = tk.Toplevel(self.window)
+        popup.config(bg='azure2')
+        icon_path = self.get_path_icon('assets/notification.ico')
+        popup.geometry('300x180')
+        popup.iconbitmap(icon_path)
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+        popup_width = 250
+        popup_height = 150
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 4) - (popup_height // 2)
+        popup.geometry(f'{popup_width}x{popup_height}+{x}+{y}')
+
+        label = tk.Label(popup, text='Deseas crear una nueva carpeta? Nota: Si colocas "No" se hara uso de la carpeta por defecto', bg=popup['bg'], wraplength=popup_width - 20, justify="center")
+        label.pack(pady=10, padx=10)
+
+        def click_option(value):
+            if value == 'Ok':
+                popup.destroy()
+                return True
+            popup.destroy()
+            return False
+
+        button = tk.Button(self.window, text='Si', command=lambda: click_option('Ok'))
+        button.pack(pady=10)
+
+        button = tk.Button(popup, width=15, height=2, bg='chartreuse3', text='No', command=lambda: click_option('No'))
+        button.pack(pady=10)
 
     def verify_input(self,input_):
         value=input_.get()

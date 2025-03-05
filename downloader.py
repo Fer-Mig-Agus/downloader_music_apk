@@ -1,3 +1,5 @@
+import time
+
 import yt_dlp
 import os
 import re
@@ -6,6 +8,7 @@ import validators
 import argparse
 import zipfile
 import shutil
+import threading
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from config import (FFMPEG_INSTALL_PATH, FFMPEG_BIN_PATH, FFMPEG_ZIP_PATH,
                     FFMPEG_DOWNLOAD_URL, HTTP_HEADERS, DEFAULT_DOWNLOAD_FOLDER, YTDLP_OPTIONS)
@@ -16,6 +19,7 @@ class MusicDownloader:
         """Inicializa las variables de la clase."""
         self.ffmpeg_verificado = False
         self.list_music=[]
+        self.progress=False
 
     def instalar_ffmpeg(self,screen):
         """Verifica si FFmpeg está instalado y, si no, lo descarga e instala.
@@ -34,20 +38,22 @@ class MusicDownloader:
             Retorna:
                 None
             """
+
         if self.ffmpeg_verificado or self.ffmpeg_esta_instalado():
             screen.show_popup_notification(f"✅ FFmpeg ya está instalado en '{FFMPEG_BIN_PATH}'.",'Notification')
             return
 
         screen.show_popup_notification(f"⚠️ FFmpeg no está instalado en '{FFMPEG_INSTALL_PATH}'. Descargando...",'Error')
-        # os.makedirs(FFMPEG_INSTALL_PATH, exist_ok=True)
-        #
-        # if self.descargar_ffmpeg():
-        #     self.extraer_ffmpeg()
-        #     os.environ["PATH"] += os.pathsep + FFMPEG_BIN_PATH
-        #     self.ffmpeg_verificado = True
-        #     print("✅ FFmpeg instalado correctamente.")
-        # else:
-        #     print("❌ No se pudo instalar FFmpeg.")
+        os.makedirs(FFMPEG_INSTALL_PATH, exist_ok=True)
+
+        if self.descargar_ffmpeg():
+            self.extraer_ffmpeg()
+            os.environ["PATH"] += os.pathsep + FFMPEG_BIN_PATH
+            self.ffmpeg_verificado = True
+            screen.show_popup_notification("✅ FFmpeg instalado correctamente.",'Notification')
+            self.progress=True
+        else:
+            screen.show_popup_notification("❌ No se pudo instalar FFmpeg.",'Error')
 
     def ffmpeg_esta_instalado(self):
         """Verifica si FFmpeg ya está instalado en el sistema.
@@ -129,7 +135,7 @@ class MusicDownloader:
         return os.path.join(os.path.expanduser("~"), "Downloads")
 
 
-    def obtener_nombre_carpeta(self):
+    def obtener_nombre_carpeta(self,screen):
         """Obtiene la carpeta de descargas que el usuario desea utilizar.
 
          La función realiza los siguientes pasos:
@@ -144,7 +150,9 @@ class MusicDownloader:
              str: Ruta absoluta de la carpeta seleccionada o creada.
          """
         carpeta_descargas = self.obtener_carpeta_descargas()
-        nombre_carpeta = self.solicitar_nombre_carpeta()
+        print('va a pedir el nombre')
+
+        nombre_carpeta = self.solicitar_nombre_carpeta(screen)
 
         # Si el usuario presionó Enter, usar directamente la carpeta por defecto
         if nombre_carpeta == DEFAULT_DOWNLOAD_FOLDER:
@@ -160,9 +168,9 @@ class MusicDownloader:
                 if nombre_carpeta is None:  # El usuario decidió usar la carpeta existente
                     return carpeta_destino
             else:
-                return self.crear_carpeta(carpeta_destino)
+                return self.crear_carpeta(carpeta_destino,screen)
 
-    def solicitar_nombre_carpeta(self):
+    def solicitar_nombre_carpeta(self,screen):
         """Solicita al usuario el nombre de la carpeta de descargas.
 
             Muestra un mensaje solicitando al usuario que ingrese un nombre de carpeta.
@@ -171,11 +179,18 @@ class MusicDownloader:
             Retorna:
                 str: Nombre de la carpeta ingresada por el usuario o `DEFAULT_DOWNLOAD_FOLDER` si se presiona Enter.
             """
-        nombre_carpeta = input(
-            f"Ingrese el nombre de la carpeta de descargas (Enter para usar '{DEFAULT_DOWNLOAD_FOLDER}'): ").strip()
+        print('Aqui deberia de pedir')
+        input_file=screen.input_name_directory()
+        print(f'Nombre recibido: {input_file}')
+
+        # nombre_carpeta = input(
+        #     f"Ingrese el nombre de la carpeta de descargas (Enter para usar '{DEFAULT_DOWNLOAD_FOLDER}'): ").strip()
+
+        nombre_carpeta=input_file.strip()
+
         return nombre_carpeta if nombre_carpeta else DEFAULT_DOWNLOAD_FOLDER
 
-    def verificar_carpeta_existente(self, nombre_carpeta, carpeta_descargas):
+    def verificar_carpeta_existente(self, nombre_carpeta, carpeta_descargas,screen):
         """Verifica si la carpeta ya existe y pregunta al usuario si desea usarla o ingresar un nuevo nombre.
 
             La función muestra un mensaje informando que la carpeta ya existe y le pide al usuario que elija una opción:
@@ -191,18 +206,21 @@ class MusicDownloader:
                 str | None: `None` si el usuario decide usar la carpeta existente.
                             Un nuevo nombre de carpeta si el usuario elige cambiarla.
             """
-        print(f"⚠️ La carpeta '{nombre_carpeta}' ya existe en {carpeta_descargas}.")
-        opcion = input("¿Desea usarla? (s/n) o presione Enter para ingresar un nuevo nombre: ").strip().lower()
 
-        if opcion == "s":
+        # screen.show_popup_notification(f"⚠️ La carpeta '{nombre_carpeta}' ya existe en {carpeta_descargas}.",'Notification')
+        # opcion = input("¿Desea usarla? (s/n) o presione Enter para ingresar un nuevo nombre: ").strip().lower()
+
+        option=screen.choose_election(f"⚠️ La carpeta '{nombre_carpeta}' ya existe en {carpeta_descargas}.¿Desea usarla?")
+
+        if option:
             return None  # Indica que se usará la carpeta existente
-        elif opcion == "n" or opcion == "":
-            return self.solicitar_nombre_carpeta()  # Pedir otro nombre
         else:
-            print("❌ Opción no válida. Intente de nuevo.")
-            return self.verificar_carpeta_existente(nombre_carpeta, carpeta_descargas)  # Volver a preguntar
+            return self.solicitar_nombre_carpeta()  # Pedir otro nombre
+        # else:
+        #     print("❌ Opción no válida. Intente de nuevo.")
+        #     return self.verificar_carpeta_existente(nombre_carpeta, carpeta_descargas)  # Volver a preguntar
 
-    def crear_carpeta(self, carpeta_destino):
+    def crear_carpeta(self, carpeta_destino,screen):
         """Crea la carpeta de descargas si no existe y la devuelve.
 
            Si la carpeta especificada en `carpeta_destino` no existe, la función la crea y muestra un mensaje de confirmación.
@@ -214,7 +232,7 @@ class MusicDownloader:
                str: Ruta de la carpeta recién creada.
            """
         os.makedirs(carpeta_destino)
-        print(f"✅ Carpeta '{os.path.basename(carpeta_destino)}' creada en {os.path.dirname(carpeta_destino)}.")
+        screen.show_popup_notification(f"✅ Carpeta '{os.path.basename(carpeta_destino)}' creada en {os.path.dirname(carpeta_destino)}.",'Notification')
         return carpeta_destino
 
 
@@ -343,20 +361,33 @@ class MusicDownloader:
             screen.show_popup_notification('La URL proporcionada no es válida.','Error')
             return
 
-        screen.show_popup_notification('Link aceptado','Accept')
-        self.instalar_ffmpeg(screen)
-        return
-        # carpeta = self.obtener_nombre_carpeta()
-        # url_limpia = re.sub(r'&(?:start_radio=1|rv=[^&]*)', '', url)
+        screen.show_popup_notification('Link aceptado','Accept',self.instalar_ffmpeg(screen))
+        # self.instalar_ffmpeg(screen)
+
+
+
         #
-        # videos = self.obtener_info_playlist(url_limpia)
-        #
-        # if videos:
-        #     print(f"📜 Se detectó una playlist con {len(videos)} videos.")
-        #     self.descargar_playlist(url_limpia, carpeta)
-        # else:
-        #     print("🎵 Descargando un solo video.")
-        #     self.descargar_audio(url_limpia, carpeta)
+        #     # Ejecuta la instalación en un hilo separado y espera a que termine
+        # thread = threading.Thread(target=self.instalar_ffmpeg, args=(screen,))
+        # thread.start()
+        # thread.join()  # Espera a que termine antes de continuar
+
+
+        print('Salio del instalador')
+        while not  self.progress:
+            break
+        carpeta = self.obtener_nombre_carpeta(screen)
+
+        url_limpia = re.sub(r'&(?:start_radio=1|rv=[^&]*)', '', url)
+
+        videos = self.obtener_info_playlist(url_limpia)
+
+        if videos:
+            print(f"📜 Se detectó una playlist con {len(videos)} videos.")
+            self.descargar_playlist(url_limpia, carpeta)
+        else:
+            print("🎵 Descargando un solo video.")
+            self.descargar_audio(url_limpia, carpeta)
 
 
     def run(self, url_input:str, screen):
